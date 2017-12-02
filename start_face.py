@@ -23,7 +23,7 @@ dir_path = '/Volumes/HD/Faces/dataset/faces64/'
 
 im_size = (64, 64)
 n_components = 200
-data_aug = 5
+data_aug = 0
 classifier = 'cnn'
 
 categories = {'female': {'young': 0, 'adult': 1, 'senior': 2},
@@ -248,16 +248,18 @@ def face_cnn_train(x, y):
     from keras.callbacks import EarlyStopping
 
     # options
-    f1 = 6
+    f1 = 32
     k1 = 7
     p1 = 2
+    """
     f2 = 2
     k2 = 5
     p2 = 2
     f3 = 2
     k3 = 3
     p3 = 2
-    hu = 4
+    """
+    hu = 256
     n_classes = np.unique(y).shape[0]
 
     # initialization
@@ -265,12 +267,14 @@ def face_cnn_train(x, y):
     # 1st layer
     clf.add(Conv2D(f1, (k1, k1), activation='relu', padding='same', input_shape=(x.shape[1:])))
     clf.add(MaxPooling2D((p1, p1), padding='same'))
+    """
     # 2nd layer
     clf.add(Conv2D(f2, (k2, k2), activation='relu', padding='same'))
     clf.add(MaxPooling2D((p2, p2), padding='same'))
     # 1st layer
     clf.add(Conv2D(f3, (k3, k3), activation='relu', padding='same'))
     clf.add(MaxPooling2D((p3, p3), padding='same'))
+    """
     # fully connected
     clf.add(Flatten())
     clf.add(Dense(hu, activation='relu'))
@@ -398,8 +402,8 @@ if classifier == 'svm':
 elif classifier == 'cnn':
 
     if data_aug > 0:
-        xt_g, yt_g = data_augmentation(xt_g, yt_g, 5)
-        xt_a, yt_a = data_augmentation(xt_a, yt_a, 5)
+        xt_g, yt_g = data_augmentation(xt_g, yt_g, data_aug)
+        xt_a, yt_a = data_augmentation(xt_a, yt_a, data_aug)
     else:
         xt_g = xt_g.reshape(xt_g.shape + (1, ))
         xt_a = xt_a.reshape(xt_a.shape + (1, ))
@@ -434,6 +438,9 @@ print ConfMat_a
 print "Accuracy: ", Acc_a, " - ", acc_a
 
 bbox_size = x.shape[1:]
+
+clf_g.save("models/gender_model")
+clf_a.save("models/age_model")
 # print "train: ", x.shape, y.shape
 # print "test: ", xe.shape, ye.shape
 
