@@ -16,11 +16,14 @@ import hickle as hkl
 
 
 # dir_path = '/media/udoo/HD/Faces/faces/'  # ubuntu
-dir_path = '/Volumes/HD/Faces/faces_clean/'  # mac
-# dir_path = '/Users/Alessandro/Desktop/Faces/'
+# dir_path = '/Volumes/HD/Faces/faces_clean/'  # mac
+dir_path = '/Volumes/HD/Faces/dataset/faces64/'
+#dir_path = '/Users/Alessandro/Desktop/Faces/'
 
-im_size = (512, 512)
-n_components = 100
+im_size = (64, 64)
+n_components = 200
+data_aug = 5
+classifier = 'svm'
 
 categories = {'female': {'young': 0, 'adult': 1, 'senior': 2},
               'male': {'young': 3, 'adult': 4, 'senior': 5}}
@@ -237,6 +240,49 @@ def face_svc_train(x, y):
     return clf
 
 
+def face_cnn_train(x, y):
+
+    from keras.layers import Dense, Conv2D, MaxPooling2D
+    from keras.models import Sequential
+    from keras.callbacks import EarlyStopping
+
+    # options
+    f1 = 64
+    k1 = 7
+    p1 = 2
+    f2 = 32
+    k2 = 5
+    p2 = 2
+    f3 = 32
+    k3 = 3
+    p3 = 2
+    hu = 1024
+
+    # initialization
+    clf = Sequential()
+    # 1st layer
+    clf.add(Conv2D(f1, (k1, k1), activation='relu', padding='same', input_shape=(x.shape[1:])))
+    clf.add(MaxPooling2D((p1, p1), activation='relu', padding='same'))
+    # 2nd layer
+    clf.add(Conv2D(f2, (k2, k2), activation='relu', padding='same'))
+    clf.add(MaxPooling2D((p2, p2), activation='relu', padding='same'))
+    # 1st layer
+    clf.add(Conv2D(f3, (k3, k3), activation='relu', padding='same'))
+    clf.add(MaxPooling2D((p3, p3), activation='relu', padding='same'))
+    # fully connected
+    clf.add(Dense(1024, activation='relu'))
+    clf.add(Dense(n_classes, activation='softmax'))
+    clf.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+
+    # generating target
+    t_train = np.zeros((y.shape[0], np.unique(y).shape[0]))
+    t_train[np.arange(y.shape[0]), y] = 1
+    # training
+    clf.fit(x, y, epochs=100, validation_split=0.1, shuffle=True,
+            callbacks=[EarlyStopping(monitor='val_loss', min_delta=1e-1, patience=5, verbose=0, mode='auto')])
+
+    return clf
+
 def face_predict(gray, clf, pca, bbox_size):
 
     faces = face_cascade.detectMultiScale(gray, 1.05, 5)
@@ -249,10 +295,15 @@ def face_predict(gray, clf, pca, bbox_size):
             x = pca.transform(x)
             f.append(clf.predict_proba(x))
     else:
-        x = cv2.resize(gray, bbox_size).reshape(1, -1) / 255.0
-        x = pca.transform(x)
-        f = clf.predict_proba(x)
 
+        if classifier == 'svm':
+            x = cv2.resize(gray, bbox_size).reshape(1, -1) / 255.0
+            x = pca.transform(x)
+            f = clf.predict_proba(x)
+
+        elif classifier == 'cnn':
+            x = cv2.resize(gray, bbox_size) / 255.0
+            f = clf.predict(x)
 
     return faces, f
 
@@ -307,39 +358,55 @@ def data_augmentation(x, y, n):
 #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #  #
 
 
-print "Preparing data . . . "
-x, y = load_face(dir_path)  # loading data
+# print "Preparing data . . . "
+#x, y = load_face(dir_path)  # loading data
 
-# print "Loading data . . . "
-# x = hkl.load(dir_path + 'data')
-# y = hkl.load(dir_path + 'label')
+print "Loading data . . . "
+x = hkl.load(dir_path + 'data')
+y = hkl.load(dir_path + 'label')
 
-# xb, yb = balance_set(x, y)  # classes balancing
+#
 
 xb = x.copy()
 yb = y.copy()
+
+if classifier == 'svm':
+    xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
+elif classifier == 'cnn':
+    xb, yb = balance_set(x, y)  # classes balancing
+    xb /= 255.0
+
 yg, ya = relabel(yb)  # resplitting gender/ages labels
 
-
-xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
-#
 xt_g, xe_g, yt_g, ye_g = train_test_split(xb, yg, test_size=0.5)  # gender train test split
 xt_a, xe_a, yt_a, ye_a = train_test_split(xb, ya, test_size=0.5)  # age train test split
 
-# xta, yta = data_augmentation(xt, yt, 5)  # possible training augmentation
+
+if classifier == 'svm':
+
+    xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
+
+    print "PCA projection . . . "
+    pca_g, tr_pca_g, te_pca_g = face_pca(xt_g, xe_g, n_components=n_components)
+    pca_a, tr_pca_a, te_pca_a = face_pca(xt_a, xe_a, n_components=n_components)
+
+    train_function = face_svc_train
+
+elif classifier == 'ann':
+
+    if data_aug > 0:
+        xt_g, yt_g = data_augmentation(xt_g, yt_g, 5)
+        xt_g, yt_g = data_augmentation(xt_g, yt_g, 5)
+
+    train_function = face_cnn_train
 
 
-print "PCA projection . . . "
-pca_g, tr_pca_g, te_pca_g = face_pca(xt_g, xe_g, n_components=n_components)
-pca_a, tr_pca_a, te_pca_a = face_pca(xt_a, xe_a, n_components=n_components)
+# training
+print "Gender training . . . "
+clf_g = train_function(tr_pca_g, yt_g)
 
-print "SVC Gender training . . . "
-clf_g = face_svc_train(tr_pca_g, yt_g)
-
-print "SVC Age training . . . "
-clf_a = face_svc_train(tr_pca_a, yt_a)
-
-# fr = face_training(x..., y...)
+print "Age training . . . "
+clf_a = train_function(tr_pca_a, yt_a)
 
 ConfMat_g, Acc_g, acc_g = fr_test([], [], ye_g, fe=clf_g.predict(te_pca_g))
 print "Confusion:"
