@@ -9,6 +9,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split, GridSearchCV
 import sklearn.preprocessing as prep
 from myMLmodules import balance_set
+
 from keras.preprocessing import image
 from sklearn.decomposition import PCA
 from sklearn.svm import SVC
@@ -285,7 +286,7 @@ def face_cnn_train(x, y):
     t_train = np.zeros((y.shape[0], n_classes))
     t_train[np.arange(y.shape[0]), y] = 1
     # training
-    clf.fit(x, t_train, epochs=1, validation_split=0.1, shuffle=True,
+    clf.fit(x, t_train, epochs=100, validation_split=0.2, shuffle=True,
             callbacks=[EarlyStopping(monitor='val_loss', min_delta=1e-1, patience=5, verbose=0, mode='auto')])
 
     return clf

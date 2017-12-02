@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="cae17bcb-61e4-494c-a1e5-5cb82b2f4f44" name="Default" comment="">
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/start_cam.py" afterPath="$PROJECT_DIR$/start_cam.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/start_face.py" afterPath="$PROJECT_DIR$/start_face.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -17,23 +18,21 @@
   <component name="ExecutionTargetManager" SELECTED_TARGET="default_target" />
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="start_face.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="start_face.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/start_face.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="774">
-              <caret line="442" column="5" lean-forward="false" selection-start-line="442" selection-start-column="5" selection-end-line="442" selection-end-column="5" />
-              <folding>
-                <element signature="e#0#18#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="180">
+              <caret line="12" column="37" lean-forward="true" selection-start-line="12" selection-start-column="37" selection-end-line="12" selection-end-column="37" />
+              <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="start_cam.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="start_cam.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/start_cam.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="684">
-              <caret line="36" column="31" lean-forward="false" selection-start-line="36" selection-start-column="31" selection-end-line="36" selection-end-column="31" />
+            <state relative-caret-position="37">
+              <caret line="2" column="0" lean-forward="true" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="0" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -49,8 +48,8 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/start_cam.py" />
         <option value="$PROJECT_DIR$/start_face.py" />
+        <option value="$PROJECT_DIR$/start_cam.py" />
       </list>
     </option>
   </component>
@@ -272,22 +271,20 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/start_cam.py">
+    <entry file="file://$PROJECT_DIR$/start_face.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="684">
-          <caret line="36" column="31" lean-forward="false" selection-start-line="36" selection-start-column="31" selection-end-line="36" selection-end-column="31" />
-          <folding>
-            <element signature="e#0#10#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="180">
+          <caret line="12" column="37" lean-forward="true" selection-start-line="12" selection-start-column="37" selection-end-line="12" selection-end-column="37" />
+          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/start_face.py">
+    <entry file="file://$PROJECT_DIR$/start_cam.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="774">
-          <caret line="442" column="5" lean-forward="false" selection-start-line="442" selection-start-column="5" selection-end-line="442" selection-end-column="5" />
+        <state relative-caret-position="37">
+          <caret line="2" column="0" lean-forward="true" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="0" />
           <folding>
-            <element signature="e#0#18#0" expanded="true" />
+            <element signature="e#0#10#0" expanded="true" />
           </folding>
         </state>
       </provider>
