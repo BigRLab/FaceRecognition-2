@@ -9,7 +9,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split, GridSearchCV
 import sklearn.preprocessing as prep
 from myMLmodules import balance_set
-# from keras.preprocessing import image
+from keras.preprocessing import image
 from sklearn.decomposition import PCA
 from sklearn.svm import SVC
 import hickle as hkl
@@ -18,12 +18,13 @@ import hickle as hkl
 # dir_path = '/media/udoo/HD/Faces/faces/'  # ubuntu
 # dir_path = '/Volumes/HD/Faces/faces_clean/'  # mac
 dir_path = '/Volumes/HD/Faces/dataset/faces64/'
+# dir_path = '/home/users/fmontefoschi/scratch-local/FaceRecognition/data/faces512/' # BSC
 #dir_path = '/Users/Alessandro/Desktop/Faces/'
 
 im_size = (64, 64)
 n_components = 200
 data_aug = 5
-classifier = 'svm'
+classifier = 'cnn'
 
 categories = {'female': {'young': 0, 'adult': 1, 'senior': 2},
               'male': {'young': 3, 'adult': 4, 'senior': 5}}
@@ -242,43 +243,45 @@ def face_svc_train(x, y):
 
 def face_cnn_train(x, y):
 
-    from keras.layers import Dense, Conv2D, MaxPooling2D
+    from keras.layers import Dense, Conv2D, MaxPooling2D, Flatten
     from keras.models import Sequential
     from keras.callbacks import EarlyStopping
 
     # options
-    f1 = 64
+    f1 = 6
     k1 = 7
     p1 = 2
-    f2 = 32
+    f2 = 2
     k2 = 5
     p2 = 2
-    f3 = 32
+    f3 = 2
     k3 = 3
     p3 = 2
-    hu = 1024
+    hu = 4
+    n_classes = np.unique(y).shape[0]
 
     # initialization
     clf = Sequential()
     # 1st layer
     clf.add(Conv2D(f1, (k1, k1), activation='relu', padding='same', input_shape=(x.shape[1:])))
-    clf.add(MaxPooling2D((p1, p1), activation='relu', padding='same'))
+    clf.add(MaxPooling2D((p1, p1), padding='same'))
     # 2nd layer
     clf.add(Conv2D(f2, (k2, k2), activation='relu', padding='same'))
-    clf.add(MaxPooling2D((p2, p2), activation='relu', padding='same'))
+    clf.add(MaxPooling2D((p2, p2), padding='same'))
     # 1st layer
     clf.add(Conv2D(f3, (k3, k3), activation='relu', padding='same'))
-    clf.add(MaxPooling2D((p3, p3), activation='relu', padding='same'))
+    clf.add(MaxPooling2D((p3, p3), padding='same'))
     # fully connected
-    clf.add(Dense(1024, activation='relu'))
+    clf.add(Flatten())
+    clf.add(Dense(hu, activation='relu'))
     clf.add(Dense(n_classes, activation='softmax'))
     clf.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
 
     # generating target
-    t_train = np.zeros((y.shape[0], np.unique(y).shape[0]))
+    t_train = np.zeros((y.shape[0], n_classes))
     t_train[np.arange(y.shape[0]), y] = 1
     # training
-    clf.fit(x, y, epochs=100, validation_split=0.1, shuffle=True,
+    clf.fit(x, t_train, epochs=1, validation_split=0.1, shuffle=True,
             callbacks=[EarlyStopping(monitor='val_loss', min_delta=1e-1, patience=5, verbose=0, mode='auto')])
 
     return clf
@@ -374,7 +377,7 @@ if classifier == 'svm':
     xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
 elif classifier == 'cnn':
     xb, yb = balance_set(x, y)  # classes balancing
-    xb /= 255.0
+    xb = xb/255.0
 
 yg, ya = relabel(yb)  # resplitting gender/ages labels
 
@@ -387,33 +390,45 @@ if classifier == 'svm':
     xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
 
     print "PCA projection . . . "
-    pca_g, tr_pca_g, te_pca_g = face_pca(xt_g, xe_g, n_components=n_components)
-    pca_a, tr_pca_a, te_pca_a = face_pca(xt_a, xe_a, n_components=n_components)
+    pca_g, xt_g, xe_g = face_pca(xt_g, xe_g, n_components=n_components)
+    pca_a, xt_a, xe_a = face_pca(xt_a, xe_a, n_components=n_components)
 
     train_function = face_svc_train
 
-elif classifier == 'ann':
+elif classifier == 'cnn':
 
     if data_aug > 0:
         xt_g, yt_g = data_augmentation(xt_g, yt_g, 5)
-        xt_g, yt_g = data_augmentation(xt_g, yt_g, 5)
+        xt_a, yt_a = data_augmentation(xt_a, yt_a, 5)
+    else:
+        xt_g = xt_g.reshape(xt_g.shape + (1, ))
+        xt_a = xt_a.reshape(xt_a.shape + (1, ))
 
+    xe_g = xe_g.reshape(xe_g.shape + (1, ))
+    xe_a = xe_a.reshape(xe_a.shape + (1, ))
     train_function = face_cnn_train
 
 
 # training
 print "Gender training . . . "
-clf_g = train_function(tr_pca_g, yt_g)
+clf_g = train_function(xt_g, yt_g)
 
 print "Age training . . . "
-clf_a = train_function(tr_pca_a, yt_a)
+clf_a = train_function(xt_a, yt_a)
 
-ConfMat_g, Acc_g, acc_g = fr_test([], [], ye_g, fe=clf_g.predict(te_pca_g))
+fe_g = clf_g.predict(xe_g)
+fe_a = clf_a.predict(xe_a)
+
+if classifier == 'cnn':
+    fe_g = np.argmax(fe_g, axis=1)
+    fe_a = np.argmax(fe_a, axis=1)
+
+ConfMat_g, Acc_g, acc_g = fr_test([], [], ye_g, fe=fe_g)
 print "Confusion:"
 print ConfMat_g
 print "Accuracy: ", Acc_g, " - ", acc_g
 
-ConfMat_a, Acc_a, acc_a = fr_test([], [], ye_a, fe=clf_a.predict(te_pca_a))
+ConfMat_a, Acc_a, acc_a = fr_test([], [], ye_a, fe=fe_a)
 print "Confusion:"
 print ConfMat_a
 print "Accuracy: ", Acc_a, " - ", acc_a
