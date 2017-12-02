@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 from keras.models import load_model
 
-clf_g = load_model('models/gender_model')
-clf_a = load_model('models/age_model')
+clf_g = load_model('models/cnn_faces512/gender_model')
+clf_a = load_model('models/cnn_faces512/age_model')
 
 win_name = "preview"
 img_shape = (480, 640, 3)
@@ -44,7 +44,8 @@ while rval:
             detec = image.copy()
         for (x, y, w, h) in faces:
             # predicting
-            x_input = cv2.resize(gray[y0: y0 + h, x0: x0 + w], clf_g.input_shape)
+            x_input = cv2.resize(gray[y: y + h, x: x + w], clf_g.input_shape[1: 3])
+            x_input = x_input.reshape((1, ) + x_input.shape + (1, ))
             fg = clf_g.predict(x_input)
             fa = clf_a.predict(x_input)
             g = np.argmax(fg)
