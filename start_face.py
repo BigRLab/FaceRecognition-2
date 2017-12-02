@@ -9,14 +9,18 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split, GridSearchCV
 import sklearn.preprocessing as prep
 from myMLmodules import balance_set
-from keras.preprocessing import image
+# from keras.preprocessing import image
 from sklearn.decomposition import PCA
 from sklearn.svm import SVC
+import hickle as hkl
 
 
 # dir_path = '/media/udoo/HD/Faces/faces/'  # ubuntu
 dir_path = '/Volumes/HD/Faces/faces_clean/'  # mac
-im_size = (256, 256)
+# dir_path = '/Users/Alessandro/Desktop/Faces/'
+
+im_size = (512, 512)
+n_components = 100
 
 categories = {'female': {'young': 0, 'adult': 1, 'senior': 2},
               'male': {'young': 3, 'adult': 4, 'senior': 5}}
@@ -32,7 +36,6 @@ face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarc
 def load_images(dir_path):
     data = []
     labels = []
-    minsiz = (1000, 1000)
 
     gender = listdir(dir_path)
 
@@ -66,7 +69,7 @@ def load_images(dir_path):
                         continue
 
                 p = cv2.imread(dir_path + g + '/' + a + '/' + sub + '/' + img)
-                #p = cv2.resize(p, (256, 256))
+                # p = cv2.resize(p, (256, 256))
 
                 data.append(cv2.cvtColor(cv2.resize(p, im_size), cv2.COLOR_BGR2GRAY))
                 labels.append(categories[g][a])
@@ -303,9 +306,16 @@ def data_augmentation(x, y, n):
 #                                                                                                                      #
 #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #  #
 
+
 print "Preparing data . . . "
 x, y = load_face(dir_path)  # loading data
+
+# print "Loading data . . . "
+# x = hkl.load(dir_path + 'data')
+# y = hkl.load(dir_path + 'label')
+
 # xb, yb = balance_set(x, y)  # classes balancing
+
 xb = x.copy()
 yb = y.copy()
 yg, ya = relabel(yb)  # resplitting gender/ages labels
@@ -320,8 +330,8 @@ xt_a, xe_a, yt_a, ye_a = train_test_split(xb, ya, test_size=0.5)  # age train te
 
 
 print "PCA projection . . . "
-pca_g, tr_pca_g, te_pca_g = face_pca(xt_g, xe_g, n_components=50)
-pca_a, tr_pca_a, te_pca_a = face_pca(xt_a, xe_a, n_components=50)
+pca_g, tr_pca_g, te_pca_g = face_pca(xt_g, xe_g, n_components=n_components)
+pca_a, tr_pca_a, te_pca_a = face_pca(xt_a, xe_a, n_components=n_components)
 
 print "SVC Gender training . . . "
 clf_g = face_svc_train(tr_pca_g, yt_g)
