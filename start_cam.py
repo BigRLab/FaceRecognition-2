@@ -44,10 +44,11 @@ while rval:
             detec = image.copy()
         for (x, y, w, h) in faces:
             # predicting
-            x_input = cv2.resize(gray[y: y + h, x: x + w], clf_g.input_shape[1: 3])
+            x_input = cv2.resize(gray[y: y + h, x: x + w] / 255.0, clf_g.input_shape[1: 3])
             x_input = x_input.reshape((1, ) + x_input.shape + (1, ))
             fg = clf_g.predict(x_input)
             fa = clf_a.predict(x_input)
+            print fg, fa
             g = np.argmax(fg)
             pg = np.max(fg)
             a = np.argmax(fa)
