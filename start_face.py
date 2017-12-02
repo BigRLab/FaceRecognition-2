@@ -22,10 +22,11 @@ dir_path = '/Volumes/HD/Faces/dataset/faces64/'
 # dir_path = '/home/users/fmontefoschi/scratch-local/FaceRecognition/data/faces512/' # BSC
 #dir_path = '/Users/Alessandro/Desktop/Faces/'
 
-im_size = (64, 64)
+im_size = (512, 512)
 n_components = 200
 data_aug = 0
 classifier = 'cnn'
+training = False
 
 categories = {'female': {'young': 0, 'adult': 1, 'senior': 2},
               'male': {'young': 3, 'adult': 4, 'senior': 5}}
@@ -293,25 +294,20 @@ def face_cnn_train(x, y):
 
 def face_predict(gray, clf, pca, bbox_size):
 
-    faces = face_cascade.detectMultiScale(gray, 1.05, 5)
+    faces = face_cascade.detectMultiScale(gray, 1.075, 5)
     print faces
-    if len(faces) > 0:
-        f = []
-        for (x0, y0, w, h) in faces:
-            x = gray[y0: y0 + h, x0: x0 + w].copy()
-            x = cv2.resize(x, bbox_size).reshape(1, -1) / 255.0
+    if len(faces) == 0:
+        faces = [[0, 0, gray.shape[1], gray.shape[0]]]
+    f = []
+    for (x0, y0, w, h) in faces:
+        x = cv2.resize(gray[y0: y0 + h, x0: x0 + w].copy(), bbox_size)
+        if classifier == 'svm':
+            x = x.reshape(1, -1) / 255.0
             x = pca.transform(x)
             f.append(clf.predict_proba(x))
-    else:
-
-        if classifier == 'svm':
-            x = cv2.resize(gray, bbox_size).reshape(1, -1) / 255.0
-            x = pca.transform(x)
-            f = clf.predict_proba(x)
-
         elif classifier == 'cnn':
-            x = cv2.resize(gray, bbox_size) / 255.0
-            f = clf.predict(x)
+            x = x.reshape((1, ) + bbox_size + (1, )) / 255.0
+            f.append(clf.predict(x))
 
     return faces, f
 
@@ -326,10 +322,11 @@ def face_prediction_show(path_to_img, clf, pca, bbox_size):
 
     gray = cv2.cvtColor(p, cv2.COLOR_BGR2GRAY)
     faces, f = face_predict(gray, clf, pca, bbox_size)
+    print f
     i = 0
     for (x0, y0, w, h) in faces:
         t = ''
-        for j in f[i][0]:
+        for j in f[i]:
             t += str(j) + '; '
         image = p.copy()
         cv2.rectangle(image, (x0, y0), (x0 + w, y0 + h), (255, 0, 0), 2)
@@ -369,84 +366,89 @@ def data_augmentation(x, y, n):
 # print "Preparing data . . . "
 #x, y = load_face(dir_path)  # loading data
 
-print "Loading data . . . "
-x = hkl.load(dir_path + 'data')
-y = hkl.load(dir_path + 'label')
+if training:
+    print "Loading data . . . "
+    x = hkl.load(dir_path + 'data')
+    y = hkl.load(dir_path + 'label')
 
-#
+    xb = x.copy()
+    yb = y.copy()
 
-xb = x.copy()
-yb = y.copy()
+    if classifier == 'svm':
+        xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
+    elif classifier == 'cnn':
+        xb, yb = balance_set(x, y)  # classes balancing
+        xb = xb/255.0
 
-if classifier == 'svm':
-    xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
-elif classifier == 'cnn':
-    xb, yb = balance_set(x, y)  # classes balancing
-    xb = xb/255.0
+    yg, ya = relabel(yb)  # resplitting gender/ages labels
 
-yg, ya = relabel(yb)  # resplitting gender/ages labels
-
-xt_g, xe_g, yt_g, ye_g = train_test_split(xb, yg, test_size=0.5)  # gender train test split
-xt_a, xe_a, yt_a, ye_a = train_test_split(xb, ya, test_size=0.5)  # age train test split
-
-
-if classifier == 'svm':
-
-    xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
-
-    print "PCA projection . . . "
-    pca_g, xt_g, xe_g = face_pca(xt_g, xe_g, n_components=n_components)
-    pca_a, xt_a, xe_a = face_pca(xt_a, xe_a, n_components=n_components)
-
-    train_function = face_svc_train
-
-elif classifier == 'cnn':
-
-    if data_aug > 0:
-        xt_g, yt_g = data_augmentation(xt_g, yt_g, data_aug)
-        xt_a, yt_a = data_augmentation(xt_a, yt_a, data_aug)
-    else:
-        xt_g = xt_g.reshape(xt_g.shape + (1, ))
-        xt_a = xt_a.reshape(xt_a.shape + (1, ))
-
-    xe_g = xe_g.reshape(xe_g.shape + (1, ))
-    xe_a = xe_a.reshape(xe_a.shape + (1, ))
-    train_function = face_cnn_train
+    xt_g, xe_g, yt_g, ye_g = train_test_split(xb, yg, test_size=0.5)  # gender train test split
+    xt_a, xe_a, yt_a, ye_a = train_test_split(xb, ya, test_size=0.5)  # age train test split
 
 
-# training
-print "Gender training . . . "
-clf_g = train_function(xt_g, yt_g)
+    if classifier == 'svm':
 
-print "Age training . . . "
-clf_a = train_function(xt_a, yt_a)
+        xb = xb.reshape(-1, np.prod(xb.shape[1:])) / 255.0  # reshaping and formatting data
 
-fe_g = clf_g.predict(xe_g)
-fe_a = clf_a.predict(xe_a)
+        print "PCA projection . . . "
+        pca_g, xt_g, xe_g = face_pca(xt_g, xe_g, n_components=n_components)
+        pca_a, xt_a, xe_a = face_pca(xt_a, xe_a, n_components=n_components)
 
-if classifier == 'cnn':
-    fe_g = np.argmax(fe_g, axis=1)
-    fe_a = np.argmax(fe_a, axis=1)
+        train_function = face_svc_train
 
-ConfMat_g, Acc_g, acc_g = fr_test([], [], ye_g, fe=fe_g)
-print "Confusion:"
-print ConfMat_g
-print "Accuracy: ", Acc_g, " - ", acc_g
+    elif classifier == 'cnn':
 
-ConfMat_a, Acc_a, acc_a = fr_test([], [], ye_a, fe=fe_a)
-print "Confusion:"
-print ConfMat_a
-print "Accuracy: ", Acc_a, " - ", acc_a
+        if data_aug > 0:
+            xt_g, yt_g = data_augmentation(xt_g, yt_g, data_aug)
+            xt_a, yt_a = data_augmentation(xt_a, yt_a, data_aug)
+        else:
+            xt_g = xt_g.reshape(xt_g.shape + (1, ))
+            xt_a = xt_a.reshape(xt_a.shape + (1, ))
 
-bbox_size = x.shape[1:]
-
-clf_g.save("models/gender_model")
-clf_a.save("models/age_model")
-# print "train: ", x.shape, y.shape
-# print "test: ", xe.shape, ye.shape
+        xe_g = xe_g.reshape(xe_g.shape + (1, ))
+        xe_a = xe_a.reshape(xe_a.shape + (1, ))
+        train_function = face_cnn_train
 
 
+    # training
+    print "Gender training . . . "
+    clf_g = train_function(xt_g, yt_g)
+
+    print "Age training . . . "
+    clf_a = train_function(xt_a, yt_a)
+
+    fe_g = clf_g.predict(xe_g)
+    fe_a = clf_a.predict(xe_a)
+
+    if classifier == 'cnn':
+        fe_g = np.argmax(fe_g, axis=1)
+        fe_a = np.argmax(fe_a, axis=1)
+
+    ConfMat_g, Acc_g, acc_g = fr_test([], [], ye_g, fe=fe_g)
+    print "Confusion:"
+    print ConfMat_g
+    print "Accuracy: ", Acc_g, " - ", acc_g
+
+    ConfMat_a, Acc_a, acc_a = fr_test([], [], ye_a, fe=fe_a)
+    print "Confusion:"
+    print ConfMat_a
+    print "Accuracy: ", Acc_a, " - ", acc_a
+
+    bbox_size = x.shape[1:]
+
+    clf_g.save("models/gender_model")
+    clf_a.save("models/age_model")
+    # print "train: ", x.shape, y.shape
+    # print "test: ", xe.shape, ye.shape
 
 
+else:
+    print "Loading pretrained models . . ."
+    from keras.models import load_model
 
+    clf_g = load_model('models/cnn_faces512/gender_model')
+    clf_a = load_model('models/cnn_faces512/age_model')
+
+    bbox_size = clf_g.input_shape[1: 3]
+    pca = []
 
