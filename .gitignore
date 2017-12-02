@@ -4,3 +4,6 @@
 .idea/FaceRecognition.iml
 .idea/vcs.xml
 Untitled.ipynb
+data
+models
+myMLmodules.pyc
