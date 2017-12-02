@@ -1,5 +1,9 @@
 import cv2
 import numpy as np
+from keras.models import load_model
+
+clf_g = load_model('models/gender_model')
+clf_a = load_model('models/age_model')
 
 win_name = "preview"
 img_shape = (480, 640, 3)
@@ -40,10 +44,13 @@ while rval:
             detec = image.copy()
         for (x, y, w, h) in faces:
             # predicting
-            g = 1
-            pg = 0.5433333
-            a = 0
-            pa = 0.4333333
+            x_input = cv2.resize(gray[y0: y0 + h, x0: x0 + w], clf_g.input_shape)
+            fg = clf_g.predict(x_input)
+            fa = clf_a.predict(x_input)
+            g = np.argmax(fg)
+            pg = np.max(fg)
+            a = np.argmax(fa)
+            pa = np.max(fa)
             
             sg = gender[g] + ": {:.3}".format(pg)
             sa = ages[a] + ": {:.3}".format(pa)
@@ -53,6 +60,7 @@ while rval:
             sug = sugar[np.random.randint(4)]
             caf = product[np.random.randint(4)]
             print "ordinato " + caf + " con " + sug + " zucchero"
+            
     show = np.hstack((image, detec))
     cv2.imshow(win_name, show)
 
