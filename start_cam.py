@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 from keras.models import load_model
 
-clf_g = load_model('models/cnn_faces512/gender_model')
-clf_a = load_model('models/cnn_faces512/age_model')
+clf_g = load_model('models/cnn_mauri/gender_model')
+clf_a = load_model('models/cnn_mauri/age_model')
 
 win_name = "preview"
 img_shape = (480, 640, 3)
@@ -28,6 +28,7 @@ fms_counter = 0
 fms_rate = 120
 image = None
 detec = np.zeros(img_shape, dtype='uint8')
+scale_coef = 0.8
 
 while rval:
 
@@ -42,18 +43,50 @@ while rval:
         faces = face_cascade.detectMultiScale(gray, 1.075, 5)
         if len(faces) > 0:
             detec = image.copy()
-        for (x, y, w, h) in faces:
+
+            ind = 0
+            maxw = 0
+            maxi = 0
+            for (x, y, w, h) in faces:
+                if w > maxw:
+                    maxw = w
+                    maxi = ind
+                    ind += 1
+
+            (x, y, w, h) = faces[maxi]
             # predicting
+            if min(w, h) < 60:
+                continue
+
             x_input = cv2.resize(gray[y: y + h, x: x + w] / 255.0, clf_g.input_shape[1: 3])
             x_input = x_input.reshape((1, ) + x_input.shape + (1, ))
             fg = clf_g.predict(x_input)
             fa = clf_a.predict(x_input)
-            print fg, fa
+            gb = int(x_input.shape[1] / 4.0)
+            up_mask = np.mean(x_input[0, 2 *gb: -gb, gb: -gb])
+            low_mask = np.mean(x_input[0, -gb:, gb: -gb])
+            print "\n GENDER PREDICTION"
+            print "original pred", fg
+            print "mask", up_mask, low_mask
+            mf = 2.0 * min(max(up_mask  - low_mask, 0), 1) / up_mask
+            print mf
+            fg = fg + np.array([-mf, mf])  # (1 - scale_coef) * fg + scale_coef * np.array([-mf, mf])
+            fg = np.exp(fg) / np.sum(np.exp(fg))
+            print "scaled pred", fg
+
+            print "\n AGE PREDICTION"
+            print "original pred", fa
+            sf = max(np.median(x_input[0, :gb, :gb]), np.median(x_input[0, :gb, :-gb])) / 2.0
+            print sf
+            fa = fa + np.array([-sf, -sf, sf])  # (1 - scale_coef) * fg + scale_coef * np.array([-mf, mf])
+            fa = np.exp(fa) / np.sum(np.exp(fa))
+            print "scaled pred", fa
+
             g = np.argmax(fg)
             pg = np.max(fg)
             a = np.argmax(fa)
             pa = np.max(fa)
-            
+
             sg = gender[g] + ": {:.3}".format(pg)
             sa = ages[a] + ": {:.3}".format(pa)
             cv2.rectangle(detec, (x, y), (x + w, y + h), (255, 200, 0), 3)
