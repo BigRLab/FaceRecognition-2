@@ -13,7 +13,7 @@ ages = {0: 'Young', 1: 'Adult', 2: 'Senior'}
 font = cv2.FONT_HERSHEY_PLAIN
 
 product = {0: 'Caffe', 1: 'Cappuccino', 2: 'Te', 3: 'Ginseng'}
-sugar = {0: 'zero', 1: 'poco', 2: 'molto', 3: 'massimo'}
+sugar = {0: ' senza zucchero', 1: ' con poco zucchero', 2: ' con molto zucchero'}
 
 cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
 vc = cv2.VideoCapture(0)
@@ -26,10 +26,12 @@ else:
     rval = False
 
 fms_counter = 0
-fms_rate = 120
+fms_rate = 600
 image = None
 detec = np.zeros(img_shape, dtype='uint8')
 scale_coef = 0.8
+
+wrs = 1
 
 while rval:
 
@@ -93,9 +95,11 @@ while rval:
             cv2.rectangle(detec, (x, y), (x + w, y + h), (255, 200, 0), 3)
             cv2.putText(detec, sg, (x, y - 30), font, 2, (255, 200, 0), 2, cv2.LINE_AA)
             cv2.putText(detec, sa, (x, y - 5), font, 2, (255, 200, 0), 2, cv2.LINE_AA)
-            sug = sugar[np.random.randint(4)]
-            caf = product[np.random.randint(4)]
-            testo = "0, " + gender[g] + ", " + ages[a] + ", " + caf + " con " + sug + " zucchero"
+            sug = sugar[np.random.randint(len(sugar))]
+            caf = product[np.random.randint(len(product))]
+            testo = str(wrs) + ", " + gender[g] + ", " + ages[a] + ", " + caf + sug
+            wrs += 1
+            wrs = wrs % 2
             print testo
             cmd = "echo '{}' > /sensors/gender/data".format(testo)
             os.system(cmd)
