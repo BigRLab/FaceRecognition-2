@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from keras.models import load_model
+import os
 
 clf_g = load_model('models/cnn_mauri/gender_model')
 clf_a = load_model('models/cnn_mauri/age_model')
@@ -11,7 +12,7 @@ gender = {0: 'Female', 1: 'Male'}
 ages = {0: 'Young', 1: 'Adult', 2: 'Senior'}
 font = cv2.FONT_HERSHEY_PLAIN
 
-product = {0: 'caffe', 1: 'cappuccino', 2: 'te', 3: 'ginseng'}
+product = {0: 'Caffe', 1: 'Cappuccino', 2: 'Te', 3: 'Ginseng'}
 sugar = {0: 'zero', 1: 'poco', 2: 'molto', 3: 'massimo'}
 
 cv2.namedWindow(win_name, cv2.WINDOW_AUTOSIZE)
@@ -76,7 +77,7 @@ while rval:
 
             print "\n AGE PREDICTION"
             print "original pred", fa
-            sf = max(np.median(x_input[0, :gb, :gb]), np.median(x_input[0, :gb, :-gb])) / 2.0
+            sf = max(np.median(x_input[0, :gb, :gb]), np.median(x_input[0, :gb, :-gb])) / 4.0
             print sf
             fa = fa + np.array([-sf, -sf, sf])  # (1 - scale_coef) * fg + scale_coef * np.array([-mf, mf])
             fa = np.exp(fa) / np.sum(np.exp(fa))
@@ -94,8 +95,11 @@ while rval:
             cv2.putText(detec, sa, (x, y - 5), font, 2, (255, 200, 0), 2, cv2.LINE_AA)
             sug = sugar[np.random.randint(4)]
             caf = product[np.random.randint(4)]
-            print "ordinato " + caf + " con " + sug + " zucchero"
-            
+            testo = "0, " + gender[g] + ", " + ages[a] + ", " + caf + " con " + sug + " zucchero"
+            print testo
+            cmd = "echo '{}' > /sensors/gender/data".format(testo)
+            os.system(cmd)
+
     show = np.hstack((image, detec))
     cv2.imshow(win_name, show)
 
